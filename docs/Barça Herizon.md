@@ -64,11 +64,14 @@ noisy, but noise in coordinates can be handled with code, which is where we put 
 **Two questions, two models.** "Is the ball in play?" and "which team has it?" depend on different
 evidence, so we answer them separately:
 
-- **Dead ball is decided from the players only.** When play stops, the players show it: both teams
+- **The dead-ball model sees only the players.** When play stops, the players show it: both teams
   slow down together, shapes change (walls, kick-off formations, players gathering in the box or at
-  a touchline). Using players only means the dead-ball decision does not depend on the ball, which
-  is missing on about 41% of the graded frames and which, in our external data, freezes in place
-  during dead play. A ball-based dead-ball rule would learn that freeze rather than football.
+  a touchline). Using players only means the learned dead-ball decision does not depend on the
+  ball, which is missing on about 41% of the graded frames and which, in our external data, freezes
+  in place during dead play. A learned model given the ball's movement would learn that freeze
+  rather than football. The one exception is a fixed rule, not a learned one (v3, section 5): an
+  observed ball clearly beyond a touchline or goal line is out of play. It uses the ball's position
+  rather than its movement, which follows from the Laws of the Game and is unaffected by the freeze.
 - **Possession is decided on live frames only**, from the ball and the players around it, plus
   team context that still works when the ball is missing (team compactness, movement towards goal,
   how high the team stands).
@@ -171,8 +174,9 @@ models and segmenter costs are the v2 ones (`config/v3_post.json`, `bh/v3post.py
 
 We wrote our own possession rulebook before building, and the system follows it:
 
-- **Dead ball** is a stoppage, never a possession, and comes from the players only. Frames outside
-  the two halves are `D`. The file never contains `X`.
+- **Dead ball** is a stoppage, never a possession. It is decided by the players-only dead-ball
+  model, except that an observed ball beyond a touchline or goal line is always dead (the fixed
+  out-of-play rule of section 5). Frames outside the two halves are `D`. The file never contains `X`.
 - **Restarts.** After every dead spell, possession is decided afresh from what happens after the
   restart. Nothing carries across a stoppage, so `H` → `D` → `H` is always two possessions. We do
   not model who "owns" a dead ball (the ground truth does not ask for it).
@@ -259,7 +263,7 @@ band over six matches) and improved at least 5 of the 6 matches; the rule was fi
 | Training on every frame instead of every 5th | −0.000 | dropped |
 | Additional dead-ball and possession features | +0.011 at best, 5 of 6 matches | dropped |
 | Labels derived from event data for IDSSE | replaced by the provider's per-frame ball status and possession flags, which are frame-exact | dropped |
-| A ball-based dead-ball rule | the ball freezes during dead play in the external data, so such a rule learns a data artefact | dropped in favour of players only |
+| Dead-ball evidence from the ball's movement | the ball freezes during dead play in the external data, so a model using it learns a data artefact | dropped: the dead-ball model uses players only (the v3 out-of-play rule uses the ball's position, not its movement) |
 
 For v3 we first measured where the remaining errors are, with every other part made perfect in turn
 on development data: perfect dead-ball boundaries would add +0.078 (almost all of it the start of
