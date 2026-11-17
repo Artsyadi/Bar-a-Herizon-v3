@@ -1,0 +1,20 @@
+{
+  "version": "v3 = v2 models + config/v3_post.json rules (no retraining)",
+  "base": "v2",
+  "frozen": "2026-11-16 14:51:53",
+  "dev_result": "30 IDSSE dev units: v2 0.6135 -> v3 0.6332 (+0.0197, 6 of 6 matches better, worst +0.0074); scripts/v3_post_check.py",
+  "never_used_for_choices": [
+    "idsse_J03WPY",
+    "metrica_game_1",
+    "metrica_game_2",
+    "metrica_game_3"
+  ],
+  "python": "3.10.22",
+  "md5": {
+    "models/v2/manifest.json": "8e826e005186a64bf0d5297f2a47c5ef",
+    "config/v3_post.json": "cdc3d6022776dab154e65d1e2a95d9d0",
+    "bh/v3post.py": "919f2b6ce9ea627cf921a60f8c7618c0",
+    "scripts/make_submission.py": "912d07622a458aeceaa3d1f3f39c3735",
+    "scripts/step8_bar_ath.py": "e8dfbe1cb86992671f8dd36fb544da32"
+  }
+}

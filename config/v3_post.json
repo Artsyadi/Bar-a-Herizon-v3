@@ -1,0 +1,12 @@
+{
+  "_note": "v3 = the frozen v2 models, features and segmenter, unchanged, plus two physics rules applied around the segmenter (bh/v3post.py). No retraining, nothing fitted. Both rules were fixed on 16 Nov 2026 before their first run and judged on the 30 IDSSE dev units (6 matches x 5 ball seeds) with the V3 keep rule (mean gain > 0.016 and >= 5 of 6 matches better). Result: v2 0.6135 -> 0.6332 (+0.0197, 6 of 6 better, worst +0.0074). Technical document, sections 5, 7 and 9.",
+  "ball_out": {
+    "_rule": "Before the dead-ball segmenter, every frame whose ball is observed (status 0, not estimated) more than margin_m beyond a touchline or goal line gets p_d = 1 - prob_clip: the ball is out of play once it is wholly over the line. Lines from the match's pitch size (BAR-ATH 105.3 x 68 m, external 105 x 68 m), centred coordinates. 0.5 m = ball radius 0.11 m plus tracking error. On the dev units 99.3% of these frames are truly dead.",
+    "margin_m": 0.5
+  },
+  "touch_candidates": {
+    "_rule": "After the segmenter, inside a predicted live possession of team X, a touch of the other team Y (the E1 touch detector of the v2 features, unchanged: config/features.json ha_features_v2) relabels the frames from the touch to Y's opponent's next touch as Y, at most max_len_frames, stopping at a dead-ball frame or a period change; only if at least min_len_frames. 82% of these candidates are true possessions on the dev units.",
+    "max_len_frames": 50,
+    "min_len_frames": 3
+  }
+}

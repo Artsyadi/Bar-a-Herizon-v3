@@ -1,0 +1,4 @@
+# Force LF everywhere so file fingerprints (md5) match on every platform
+* text=auto eol=lf
+*.parquet binary
+*.mp4 binary
