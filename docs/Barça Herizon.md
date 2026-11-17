@@ -265,10 +265,10 @@ band over six matches) and improved at least 5 of the 6 matches; the rule was fi
 | Labels derived from event data for IDSSE | replaced by the provider's per-frame ball status and possession flags, which are frame-exact | dropped |
 | Dead-ball evidence from the ball's movement | the ball freezes during dead play in the external data, so a model using it learns a data artefact | dropped: the dead-ball model uses players only (the v3 out-of-play rule uses the ball's position, not its movement) |
 
-For v3 we first measured where the remaining errors are, with every other part made perfect in turn
-on development data: perfect dead-ball boundaries would add +0.078 (almost all of it the start of
-dead spells, predicted about 0.4 s late at the median), perfect possessions under 2 s +0.133. Then,
-on the v2 outputs, without retraining:
+For v3 we first measured where the remaining errors are on v2's development outputs, fixing one
+error category at a time with the true labels (`scripts/step61_errors.py`): perfect dead-ball
+boundaries would add +0.086 (mostly the start of dead spells, predicted about 0.4 s late at the
+median), finding every possession under 2 s +0.155. Then, on the v2 outputs, without retraining:
 
 | Change (v3) | Result | Decision |
 |---|---|---|
@@ -280,34 +280,54 @@ on the v2 outputs, without retraining:
 | Many cheap candidate possessions filtered by a small learned verifier | +0.004; a perfect verifier would reach only +0.010 | dropped |
 | A looser touch detector (2 m, 2 m/s) | +0.003, 4 of 6 matches: more false touches than recovered possessions | dropped |
 
+**The trade-off we accepted.** The touch-candidate rule is the part of v3 most exposed to ball noise.
+In a stress test on the development data (independent per-frame jitter added to the ball, features
+rebuilt from it), it costs −0.006 against v2 at 0.25 m of jitter (standard deviation per axis), −0.025
+at 0.5 m and −0.041 at 1.0 m, while the ball-out rule gains at every level (+0.015, +0.017, +0.014,
+all 6 matches). We kept both rules because the evidence from real tracking favours them: the
+held-out match (+0.017, all 5 copies) and the Metrica matches (+0.016, all 3), whose tracking comes
+from the company that produced the provided tracking. Section 10 gives the full numbers.
+
 ## 10. Limitations: where it fails
 
-- **Short possessions.** The system predicts about 21% fewer possessions than there are (346 vs
+- **Short possessions.** The system predicts about 19% fewer possessions than there are (355 vs
   440 per match on development data). Most possessions shorter than 2 seconds (30% of all) are
   missed: inside one that lasts under a second, the possession model favours the right team on
   only 47% of frames (64% for 1–2 s). The segmenter is not the main cause: making switches
   cheaper finds only a few more of them and adds many false ones. On development data, catching
-  these perfectly would be worth about +0.16 spellF1.
+  every one of them would be worth about +0.16 spellF1 (section 9).
 - **Dead-ball boundaries.** Short stoppages are sometimes missed and dead spells start and end
-  late; perfect dead/live boundaries would be worth about +0.08 on development data. The ball-out
-  rule fixes the starts it can see, about a fifth of them.
+  late; perfect dead/live boundaries would be worth about +0.09 on development data. The ball-out
+  rule reaches about a fifth (22%) of dead-spell starts and puts almost all of those on time; the
+  rest are whistles, or the ball is not seen at the line.
 - **Line positions in the provided tracking.** The ball-out rule trusts the touchlines and goal lines
-  of the provided coordinates (pitch 105.3 × 68 m). On development data its gain shrinks from +0.020
+  of the provided coordinates (pitch 105.3 × 68 m). On development data v3's gain shrinks from +0.020
   to +0.013 when the margin grows from 0.5 m to 1 m; a line offset of 0.5 m or more in the provided
   tracking would shrink it, and a large offset could mark balls still in play as dead. We did not
   check this on the provided game, because that would mean reading its values.
 - **Short possessions the ball cannot show.** Of the short possessions still missed, 45% have no
-  observed ball at all and most of the rest show no detectable touch, so no rule on the ball can
-  recover them.
+  observed ball at all, and about two-thirds of the rest show no detectable touch by the team in
+  possession, so no rule on the ball can recover them.
 - **Noisier input than in training.** Our degradation removed ball frames only. The provided
   tracking also has player gaps, fragmented tracks and identity switches, which the models did not
-  see in training. Half of the possession model's evidence is team context that needs at least 7
-  tracked players per team.
-- **Ball noise.** The fast evidence relies on the ball's velocity changing at a touch. In a stress
-  test on external data with independent per-frame ball jitter, the system stays ahead of our
-  first submission up to 0.5 m of jitter and falls behind it at 1.0 m. The real noise of the
-  provided ball is unknown to us; Metrica's sample data, produced by the same company that
-  produced the provided tracking, was our closest check and improved.
+  see in training. About 40% of the possession model's evidence is team context that needs at
+  least 7 tracked players per team.
+- **Ball noise.** The fast evidence and the touch-candidate rule both rely on the ball's velocity
+  changing at a touch, so random errors in the ball position create false touches. In a stress
+  test on the development data with independent per-frame jitter added to the ball (standard
+  deviation per axis, features rebuilt from the jittered ball), spellF1 was:
+
+  | Ball jitter | 0 m | 0.25 m | 0.5 m | 1.0 m |
+  |---|---|---|---|---|
+  | v1 | 0.553 | 0.551 | 0.547 | 0.540 |
+  | v2 | 0.614 | 0.590 | 0.562 | 0.502 |
+  | v3 (this submission) | 0.633 | 0.598 | 0.552 | 0.473 |
+
+  v3 stays ahead of v2 at 0.25 m and falls behind it from 0.5 m; the cause is the touch-candidate
+  rule (the ball-out rule helps at every level, section 9). Both v2 and v3 fall behind v1 at 1.0 m.
+  Independent per-frame jitter is harsher on velocity than the smoothed errors of a real tracker,
+  but the real noise of the provided ball is unknown to us. Metrica's sample data, produced by the
+  same company that produced the provided tracking, was our closest check, and v3 improved there.
 - **Timing convention.** In our analysis of the external data the possession flag follows touches, not proximity:
   it switches at the new team's first touch, typically a few tenths of a second after the nearer
   team changes (median 0.4 s, most within 2 s). If the provided ground truth times its switches differently, our
